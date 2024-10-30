@@ -1,11 +1,17 @@
+import io
 import streamlit as st
 import time as ts
 import chat
 import re
 from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
 
 im = Image.open('robot-icon.png')
-st.set_page_config(page_title="Quiz Oluştur", page_icon = im)
+st.set_page_config(page_title="Quiz Oluştur", page_icon=im)
 
 st.markdown("""
  <style>
@@ -27,7 +33,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-left_column, right_column = st.columns(2)
+left_column, middle_column ,right_column = st.columns(3)
 with left_column:
     lesson = st.selectbox("Quiz yapmak istediğiniz dersi seçiniz", options=('Matematik', 'Fizik', 'Kimya', 'Biyoloji'))
 
@@ -43,7 +49,7 @@ biology_lessons = ["Canlıların Ortak Özellikleri", "Canlıların Temel Bileş
                    "Canlıların Sınıflandırılması", "Hücre Bölünmeleri ve Üreme", "Kalıtım", "Sistemler",
                    "Ekosistem ve Ekoloji", "Bitkiler Biyolojisi", "Genetik", "Ekoloji", "Solunum"]
 
-with right_column:
+with middle_column:
     if lesson == 'Matematik':
         multi_select = st.multiselect("Hangi konu", options=mathematics_lessons)
     elif lesson == 'Fizik':
@@ -53,16 +59,43 @@ with right_column:
     elif lesson == 'Biyoloji':
         multi_select = st.multiselect("Hangi konu", options=biology_lessons)
 
+with right_column:
+    difficulty = st.selectbox('Zorluk Seçin',options=('Kolay','Orta','Zor','Çok Zor'))
+
+question = f"Bana {lesson} dersinden {multi_select} konusu üzerine zorluğu {difficulty} olan 20 tane test sorusu verebilir misin? soruların şıkları bir alt satırda olsun, birbirlerine bitişik olmasın, sorular kalın olsun!"
+
 
 def generate_bot_response(user_input):
     response = chat.chat_session.send_message(user_input)
     model_response = response.text
     model_response = re.sub(r"\*", "", model_response)
-
     return model_response
 
 
-question = f"Bana {lesson} dersinden {multi_select} konusu üzerine 20 tane test sorusu verebilir misin? soruların şıkları bir alt satırda olsun, birbirlerine bitişik olmasın, sorular kalın olsun ve cevap anahtarı da olsun istiyorum"
+def generate_pdf(content):
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Özel fontu yükleyin ve kaydedin
+    pdfmetrics.registerFont(TTFont("FreeSans", "fonts/FreeSans.ttf"))
+    pdf.setFont("FreeSans", 12)
+    
+    # Sayfa başlığı
+    pdf.drawString(100, 750, "Oluşturulan Quiz Soruları")
+    y = 720  # Yükseklik ayarı
+    
+    for line in content.split('\n'):
+        if y < 40:  # Sayfanın sonuna geldiğinde yeni sayfaya geç
+            pdf.showPage()
+            pdf.setFont("FreeSans", 12)
+            y = 750
+        pdf.drawString(30, y, line)
+        y -= 20  # Satır aralığı
+    
+    pdf.save()
+    buffer.seek(0)
+    return buffer
+
 
 st.markdown("""
 <style>
@@ -73,34 +106,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# st.markdown("""
-#     <style>
-#     .custom-button {
-#         background-color: blue;
-#         color: white;
-#         border: none;
-#         padding: 10px 20px;
-#         text-align: center;
-#         text-decoration: none;
-#         display: inline-block;
-#         font-size: 16px;
-#         margin: 4px 2px;
-#         cursor: pointer;
-#         border-radius: 5px;
-#         transition: background-color 0.3s;
-#     }
-#
-#     .custom-button:hover {
-#         background-color: green;
-#     }
-#     </style>
-# """, unsafe_allow_html=True)
 
-# if st.markdown('<button class="custom-button">Soruları Getir</button>', unsafe_allow_html=True):
-
-if st.button("Soruları Getir", type = "primary"):
+if st.button("Soruları Getir", type="primary"):
     if not multi_select:
         st.warning("Lütfen en az bir konu seçin!")
     else:
         response = generate_bot_response(question)
-        st.write(response)
+        # st.write(response)
+        
+        # PDF oluştur ve indirme düğmesini ekle
+        pdf_buffer = generate_pdf(response)
+        st.download_button(
+            label="Soruları PDF olarak indir",
+            data=pdf_buffer,
+            file_name="quiz_sorulari.pdf",
+            mime="application/pdf"
+        )

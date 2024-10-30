@@ -35,7 +35,12 @@ model = genai.GenerativeModel(
   safety_settings=safety_settings,
 )
 
-
 chat_session = model.start_chat(
     history=[]
 )
+
+# Yeni Fonksiyon: PDF içeriğini alıp doğru/yanlış analizini gerçekleştirmek üzere Gemini'ye gönder
+def analyze_pdf_content(pdf_text):
+    prompt = f"Bu PDF içeriğindeki işaretli cevapların doğru ve yanlış olup olmadığını analiz et ve her sorunun sonucunu doğru veya yanlış olarak belirt:\n\n{pdf_text}"
+    response = chat_session.send_message(prompt)
+    return response.text  # Yanıtı metin formatında döndür
