@@ -76,21 +76,19 @@ def generate_pdf(content):
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=letter)
     
-    # Özel fontu yükleyin ve kaydedin
     pdfmetrics.registerFont(TTFont("FreeSans", "fonts/FreeSans.ttf"))
     pdf.setFont("FreeSans", 12)
     
-    # Sayfa başlığı
     pdf.drawString(100, 750, "Oluşturulan Quiz Soruları")
-    y = 720  # Yükseklik ayarı
+    y = 720
     
     for line in content.split('\n'):
-        if y < 40:  # Sayfanın sonuna geldiğinde yeni sayfaya geç
+        if y < 40:
             pdf.showPage()
             pdf.setFont("FreeSans", 12)
             y = 750
         pdf.drawString(30, y, line)
-        y -= 20  # Satır aralığı
+        y -= 20
     
     pdf.save()
     buffer.seek(0)
@@ -112,9 +110,7 @@ if st.button("Soruları Getir", type="primary"):
         st.warning("Lütfen en az bir konu seçin!")
     else:
         response = generate_bot_response(question)
-        # st.write(response)
-        
-        # PDF oluştur ve indirme düğmesini ekle
+
         pdf_buffer = generate_pdf(response)
         st.download_button(
             label="Soruları PDF olarak indir",
